@@ -121,10 +121,6 @@
   transform: none;
 }
 
-html.is-typing {
-  scroll-snap-type: none;
-}
-
 .cv-field {
   position: relative;
   z-index: 4;

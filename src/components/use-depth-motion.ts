@@ -24,6 +24,7 @@ export function useDepthMotion(
     let lastIndex = -1;
     let frame = 0;
     let alive = true;
+    let isTyping = false;
 
     const stations = [...document.querySelectorAll<HTMLElement>("[data-station]")];
     const cards = stations.map((el) => el.querySelector<HTMLElement>("[data-card]"));
@@ -70,13 +71,13 @@ export function useDepthMotion(
       const height = window.innerHeight || 1;
       let closest = 0;
       let best = Infinity;
+      const typing = isTyping;
 
       stations.forEach((el, index) => {
         const rect = el.getBoundingClientRect();
         const dist = (rect.top + rect.height * 0.5 - height * 0.5) / height;
         const ad = Math.min(Math.abs(dist), 1.4);
         const card = cards[index];
-        const typing = document.documentElement.classList.contains("is-typing");
         if (card && !state.reduced && !typing && el.dataset.reveal !== "static") {
           const slack = Math.max(0, ad - 0.07);
           const t = Math.min(1, slack / 0.55);
@@ -89,7 +90,7 @@ export function useDepthMotion(
           const opacity = (1 - away).toFixed(3);
           if (card.style.transform !== transform) card.style.transform = transform;
           if (card.style.opacity !== opacity) card.style.opacity = opacity;
-        } else if (card && (el.dataset.reveal === "static" || typing)) {
+        } else if (card && el.dataset.reveal === "static") {
           if (card.style.transform) card.style.transform = "";
           if (card.style.opacity !== "1") card.style.opacity = "1";
         }
@@ -116,7 +117,7 @@ export function useDepthMotion(
       if (!el) return;
       const tag = el.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable) {
-        document.documentElement.classList.add("is-typing");
+        isTyping = true;
       }
     };
     const onFocusOut = () => {
@@ -124,7 +125,7 @@ export function useDepthMotion(
         const active = document.activeElement as HTMLElement | null;
         const tag = active?.tagName;
         const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active?.isContentEditable;
-        if (!typing) document.documentElement.classList.remove("is-typing");
+        isTyping = Boolean(typing);
       });
     };
 
@@ -162,7 +163,7 @@ export function useDepthMotion(
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
-      document.documentElement.classList.remove("is-typing");
+      isTyping = false;
       reducedQuery.removeEventListener("change", applyReduced);
     };
   }, [barRef, motion]);
