@@ -4,7 +4,6 @@ import { Download, FileText, X } from "lucide-react";
 
 export default function CVAccessDialog({ cvUrl, onClose }: { cvUrl: string; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [visitorName, setVisitorName] = useState("");
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
@@ -16,13 +15,11 @@ export default function CVAccessDialog({ cvUrl, onClose }: { cvUrl: string; onCl
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     dialog.showModal();
-    nameRef.current?.focus();
+    // Keep initial focus off the text input; focusing it on launch reproduces the original freeze.
+    closeRef.current?.focus({ preventScroll: true });
     return () => {
       if (dialog.open) dialog.close();
-      document.body.style.overflow = previousOverflow;
     };
   }, []);
 
@@ -75,7 +72,7 @@ export default function CVAccessDialog({ cvUrl, onClose }: { cvUrl: string; onCl
               <span>Autorizo el registro de este nombre para contabilizar la solicitud de visualización del CV.</span>
             </label>
             <label className="mt-4 block text-sm font-medium text-fg" htmlFor="cv-visitor-name">Nombre / Organización</label>
-            <input ref={nameRef} id="cv-visitor-name" type="text" value={visitorName}
+            <input id="cv-visitor-name" type="text" value={visitorName}
               onChange={(event) => setVisitorName(event.target.value)} placeholder="Nombre / Organización"
               required minLength={1} maxLength={120}
               className="cv-field mt-2 min-h-12 w-full rounded-xl border border-line bg-surface px-4 py-2 text-base text-fg placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
