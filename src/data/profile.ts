@@ -14,7 +14,7 @@ export const profile = {
   whatsapp: "https://wa.me/525651398264",
   linkedin: "https://www.linkedin.com/in/eduardo-telv",
   github: "https://github.com/Eddglitch",
-  cv: "/cv-eduardo-tellez-valverde.pdf",
+  cv: `${import.meta.env.BASE_URL}cv-eduardo-tellez-valverde.pdf`,
 };
 
 export type Beat = {

@@ -47,7 +47,7 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    scroll-snap-type: y mandatory;
+    scroll-snap-type: y proximity;
     overflow-x: clip;
   }
 
@@ -101,13 +101,34 @@
   perspective: 1200px;
   perspective-origin: 50% 42%;
   scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-snap-stop: normal;
 }
 
 .station-card {
   width: min(100%, 32rem);
   transform-style: preserve-3d;
   transform-origin: 50% 46%;
+}
+
+/* Estaciones estáticas (perfil, CV, contacto): sin 3D.
+   preserve-3d + perspective impide enfocar inputs en Chrome/Safari. */
+.station[data-reveal="static"] {
+  perspective: none;
+}
+
+.station[data-reveal="static"] .station-card {
+  transform-style: flat;
+  transform: none;
+}
+
+html.is-typing {
+  scroll-snap-type: none;
+}
+
+.cv-field {
+  position: relative;
+  z-index: 4;
+  touch-action: manipulation;
 }
 
 .panel {

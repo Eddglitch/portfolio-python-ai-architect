@@ -76,7 +76,8 @@ export function useDepthMotion(
         const dist = (rect.top + rect.height * 0.5 - height * 0.5) / height;
         const ad = Math.min(Math.abs(dist), 1.4);
         const card = cards[index];
-        if (card && !state.reduced && el.dataset.reveal !== "static") {
+        const typing = document.documentElement.classList.contains("is-typing");
+        if (card && !state.reduced && !typing && el.dataset.reveal !== "static") {
           const slack = Math.max(0, ad - 0.07);
           const t = Math.min(1, slack / 0.55);
           const away = t * t * (3 - 2 * t);
@@ -84,11 +85,13 @@ export function useDepthMotion(
           const rz = -away * 480;
           const rx = away * dir * -24;
           const ty = away * dir * 24;
-          card.style.transform = `translate3d(0px, ${ty.toFixed(2)}px, ${rz.toFixed(2)}px) rotateX(${rx.toFixed(2)}deg)`;
-          card.style.opacity = (1 - away).toFixed(3);
-        } else if (card) {
-          card.style.transform = "none";
-          card.style.opacity = "1";
+          const transform = `translate3d(0px, ${ty.toFixed(2)}px, ${rz.toFixed(2)}px) rotateX(${rx.toFixed(2)}deg)`;
+          const opacity = (1 - away).toFixed(3);
+          if (card.style.transform !== transform) card.style.transform = transform;
+          if (card.style.opacity !== opacity) card.style.opacity = opacity;
+        } else if (card && (el.dataset.reveal === "static" || typing)) {
+          if (card.style.transform) card.style.transform = "";
+          if (card.style.opacity !== "1") card.style.opacity = "1";
         }
         if (ad < best) {
           best = ad;
@@ -108,9 +111,27 @@ export function useDepthMotion(
       }
     };
 
+    const onFocusIn = (event: FocusEvent) => {
+      const el = event.target as HTMLElement | null;
+      if (!el) return;
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable) {
+        document.documentElement.classList.add("is-typing");
+      }
+    };
+    const onFocusOut = () => {
+      requestAnimationFrame(() => {
+        const active = document.activeElement as HTMLElement | null;
+        const tag = active?.tagName;
+        const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active?.isContentEditable;
+        if (!typing) document.documentElement.classList.remove("is-typing");
+      });
+    };
+
     const onKey = (event: KeyboardEvent) => {
-      const tag = (event.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "A" || tag === "BUTTON") return;
+      const el = event.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "A" || tag === "BUTTON" || el?.isContentEditable) return;
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "PageDown" && event.key !== "PageUp") {
         return;
       }
@@ -126,6 +147,8 @@ export function useDepthMotion(
     window.addEventListener("pointercancel", resetTouch);
     window.addEventListener("blur", leave);
     window.addEventListener("keydown", onKey);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
     reducedQuery.addEventListener("change", applyReduced);
     frame = window.requestAnimationFrame(tick);
 
@@ -137,6 +160,9 @@ export function useDepthMotion(
       window.removeEventListener("pointercancel", resetTouch);
       window.removeEventListener("blur", leave);
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      document.documentElement.classList.remove("is-typing");
       reducedQuery.removeEventListener("change", applyReduced);
     };
   }, [barRef, motion]);

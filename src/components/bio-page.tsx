@@ -192,6 +192,11 @@ function CVViewer({ visitorName, onClose, cvUrl }: { visitorName: string; onClos
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLoaded(true), 2500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div className="mt-6 relative w-full">
       <div className="sticky top-4 z-10 flex items-center justify-between gap-2 mb-4 p-3 rounded-xl border border-line bg-surface/90 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
@@ -224,7 +229,7 @@ function CVViewer({ visitorName, onClose, cvUrl }: { visitorName: string; onClos
       </div>
       <div className="relative" style={{ minHeight: "70vh" }}>
         {!loaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface/50 rounded-xl border border-line">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl border border-line bg-surface/50">
             <div className="text-center p-6">
               <div className="size-10 border-4 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" aria-label="Cargando PDF" />
               <p className="text-sm text-muted">Cargando visor...</p>
@@ -236,9 +241,7 @@ function CVViewer({ visitorName, onClose, cvUrl }: { visitorName: string; onClos
           src={cvUrl}
           title="CV Eduardo Téllez Valverde"
           className="w-full h-full min-h-[70vh] rounded-xl border border-line bg-white dark:bg-neutral-900"
-          sandbox="allow-scripts allow-same-origin"
           onLoad={() => setLoaded(true)}
-          style={{ pointerEvents: loaded ? "auto" : "none" }}
         />
       </div>
     </div>
@@ -282,7 +285,7 @@ function CVStation() {
     setSubmitted(false);
   };
 
-  const cvUrl = "/portfolio-python-ai-architect/cv-eduardo-tellez-valverde.pdf";
+  const cvUrl = `${import.meta.env.BASE_URL}cv-eduardo-tellez-valverde.pdf`;
 
   return (
     <Station id="cv" reveal="static">
@@ -308,12 +311,14 @@ function CVStation() {
                 type="text"
                 value={visitorName}
                 onChange={(e) => setVisitorName(e.target.value)}
+                onPointerDown={(e) => e.stopPropagation()}
                 placeholder="Nombre / Organización"
                 required
                 minLength={1}
-                className="flex-1 min-h-11 px-4 py-2 rounded-xl border border-line bg-surface text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 text-base"
+                className="cv-field flex-1 min-h-11 px-4 py-2 rounded-xl border border-line bg-surface text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 text-base"
                 aria-label="Nombre u organización"
                 autoComplete="organization"
+                enterKeyHint="done"
               />
               <button
                 type="submit"
