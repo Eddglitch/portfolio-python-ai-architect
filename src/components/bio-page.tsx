@@ -1,6 +1,7 @@
-import { lazy, Suspense, useRef, useState, useEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, FileDown, Github, Linkedin, Mail, Moon, Sun } from "lucide-react";
 import { FractalCanvas } from "@/components/fractal-canvas";
+import CVAccessDialog from "@/components/cv-access-dialog";
 import type { MotionState } from "@/components/motion-state";
 import { ProjectDiagrams } from "@/components/project-diagrams";
 import { scrollToStation, useDepthMotion } from "@/components/use-depth-motion";
@@ -190,8 +191,6 @@ function WorkStation({ item }: { item: WorkItem }) {
   );
 }
 
-const CVAccessDialog = lazy(() => import("@/components/cv-access-dialog"));
-
 function CVStation() {
   const cvUrl = `${import.meta.env.BASE_URL}cv-eduardo-tellez-valverde.pdf`;
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -207,7 +206,7 @@ function CVStation() {
           </button>
         </div>
       </div>
-      {dialogOpen && <Suspense fallback={null}><CVAccessDialog cvUrl={cvUrl} onClose={() => setDialogOpen(false)} /></Suspense>}
+      {dialogOpen && <CVAccessDialog cvUrl={cvUrl} onClose={() => setDialogOpen(false)} />}
     </Station>
   );
 }
