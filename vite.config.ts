@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 
 export default defineConfig(({ command, isPreview }) => ({
+  base: "/portfolio-python-ai-architect/",
   server: {
     host: "0.0.0.0",
     port: 3000,
@@ -20,7 +21,7 @@ export default defineConfig(({ command, isPreview }) => ({
     ...(command === "build" || isPreview
       ? [
           nitro({
-            preset: "vercel",
+            preset: "static",
           }),
         ]
       : []),
