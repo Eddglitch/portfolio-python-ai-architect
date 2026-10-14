@@ -1,11 +1,10 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Eduardo Téllez Valverde · Desarrollador Python & IA Aplicada";
 const DESCRIPTION =
   "Portafolio de Eduardo Téllez Valverde. Desarrollo Python avanzado, IA aplicada, sistemas RAG, pipelines fiscales CFDI/SAT y arquitecturas cloud híbridas.";
 
-const THEME_BOOT = `(function(){try{var k="et-theme";var t=localStorage.getItem(k);var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;var r=document.documentElement;if(d)r.classList.add("dark");else r.classList.remove("dark");r.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -36,15 +35,9 @@ export const Route = createRootRoute({
     ],
   }),
   component: () => (
-    <html lang="es" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
-        <HeadContent />
-      </head>
-      <body>
-        <Outlet />
-        <Scripts />
-      </body>
-    </html>
+    <>
+      <HeadContent />
+      <Outlet />
+    </>
   ),
 });
