@@ -1,0 +1,35 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Builds y salidas de frameworks
+dist/
+.output/
+.vercel/
+.nitro/
+.tanstack/
+.vinxi/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Logs y sistema operativo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDEs y editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
