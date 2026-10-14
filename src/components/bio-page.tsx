@@ -25,7 +25,7 @@ const SOCIAL = [
 ] as const;
 
 function ThemeToggle() {
-  const sunRef = useRef<HTMLSpanElement>(null);
+  const sunRef = useRef<SVGSVGElement>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -251,6 +251,9 @@ function CVViewer({ visitorName, onClose, cvUrl }: { visitorName: string; onClos
 function CVStation() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [visitorName, setVisitorName] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState("");
   const [showForm, setShowForm] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const [storedVisitor, setStoredVisitor] = useState("");
@@ -264,9 +267,23 @@ function CVStation() {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     const name = visitorName.trim() || "unknown";
+    setSubmitting(true);
+    setRegistrationMessage("");
+    try {
+      const apiUrl = (import.meta.env.VITE_CV_VISITORS_API_URL || "https://cv-visitors-api.cv-visitor-worker.workers.dev").replace(/\/$/, "");
+      if (!apiUrl) throw new Error("El registro en línea no está configurado.");
+      const response = await fetch(apiUrl + "/api/cv-visitors", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+      });
+      if (!response.ok) throw new Error("No se pudo guardar el registro en línea.");
+      setRegistrationMessage("Solicitud registrada.");
+    } catch {
+      setRegistrationMessage("No se pudo registrar la solicitud en línea; puedes continuar al CV.");
+    }
     try {
       localStorage.setItem("et-cv-visitor", name);
       localStorage.setItem("et-cv-timestamp", Date.now().toString());
@@ -276,6 +293,7 @@ function CVStation() {
     setStoredVisitor(name);
     setShowForm(false);
     setSubmitted(true);
+    setSubmitting(false);
     requestAnimationFrame(() => setViewerOpen(true));
   };
 
@@ -304,14 +322,17 @@ function CVStation() {
               </span>
             </p>
             <p className="text-xs text-accent/80 mb-4">
-              El CV se muestra incrustado en esta página (sin descarga obligatoria), cumpliendo estándares de seguridad y privacidad. Puedes descargarlo después si lo deseas.
+              Tu nombre se enviará a Cloudflare para registrar esta solicitud junto con la fecha y hora. No incluyas información sensible; puedes usar “unknown”.
             </p>
+            <label className="mb-4 flex items-start gap-2 text-xs text-muted">
+              <input type="checkbox" required checked={privacyAccepted} onChange={(e) => setPrivacyAccepted(e.target.checked)} className="mt-0.5 accent-[var(--accent)]" />
+              <span>Autorizo el registro de este nombre para contabilizar la solicitud de visualización del CV.</span>
+            </label>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <input
                 type="text"
                 value={visitorName}
                 onChange={(e) => setVisitorName(e.target.value)}
-                onPointerDown={(e) => e.stopPropagation()}
                 placeholder="Nombre / Organización"
                 required
                 minLength={1}
@@ -322,12 +343,14 @@ function CVStation() {
               />
               <button
                 type="submit"
+                disabled={submitting}
                 className="press inline-flex items-center gap-2 min-h-11 px-5 rounded-xl border border-accent bg-accent text-accent-fg font-medium whitespace-nowrap"
               >
                 <Eye className="size-4" aria-hidden="true" />
-                Visualizar CV
+                {submitting ? "Registrando…" : "Visualizar CV"}
               </button>
             </div>
+            {registrationMessage && <p role="status" className="mt-3 text-xs text-muted">{registrationMessage}</p>}
           </form>
         )}
 
@@ -339,11 +362,14 @@ function CVStation() {
         )}
 
         {viewerOpen && (
-          <CVViewer
-            visitorName={storedVisitor}
-            onClose={closeViewer}
-            cvUrl={cvUrl}
-          />
+          <>
+            <CVViewer
+              visitorName={storedVisitor}
+              onClose={closeViewer}
+              cvUrl={cvUrl}
+            />
+            {registrationMessage && <p role="status" className="mt-3 text-xs text-muted">{registrationMessage}</p>}
+          </>
         )}
       </div>
     </Station>

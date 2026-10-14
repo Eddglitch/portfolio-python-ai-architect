@@ -1,0 +1,13 @@
+name = "cv-visitors-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-14"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGINS = "https://eddglitch.github.io,http://localhost:3000"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cv-visitors"
+database_id = "d17bca59-da40-4ee3-87ed-5efcb8b5182b"
+migrations_dir = "migrations"

@@ -134,9 +134,8 @@ html.is-typing {
 .panel {
   border: 1px solid var(--line);
   border-radius: 1.75rem;
-  background: color-mix(in oklab, var(--surface) 96%, transparent);
+  background: var(--surface);
   box-shadow: 0 28px 70px -40px color-mix(in oklab, var(--fg) 45%, transparent);
-  backdrop-filter: blur(16px);
 }
 
 .beat {
