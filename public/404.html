@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
+    <script>
+      (function () {
+        var path = window.location.pathname;
+        var base = "/portfolio-python-ai-architect/";
+        if (path.startsWith(base)) {
+          path = path.slice(base.length - 1);
+        }
+        var url = base + "#" + path;
+        window.location.replace(url);
+      })();
+    </script>
+  </head>
+  <body>
+    Redirecting to <a id="redirect-link"></a>...
+    <script>
+      document.getElementById("redirect-link").href = window.location.href;
+      document.getElementById("redirect-link").textContent = window.location.href;
+    </script>
+  </body>
+</html>

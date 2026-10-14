@@ -31,6 +31,15 @@
         } catch (e) { /* ignore private mode */ }
       })();
     </script>
+    <script>
+      (function () {
+        var base = "/portfolio-python-ai-architect/";
+        var hash = window.location.hash;
+        if (hash.startsWith("#" + base)) {
+          window.location.hash = hash.slice(base.length);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -11,11 +11,3 @@ createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </StrictMode>
 );
-
-registerSW();
-
-function registerSW() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/portfolio-python-ai-architect/sw.js").catch(() => {});
-  }
-}
