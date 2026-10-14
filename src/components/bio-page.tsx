@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpRight, FileDown, Github, Linkedin, Mail, Moon, Sun } from "lucide-react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpRight, FileDown, Github, Linkedin, Mail, Moon, Sun, FileText, Download, Eye, X } from "lucide-react";
 import { FractalCanvas } from "@/components/fractal-canvas";
 import type { MotionState } from "@/components/motion-state";
 import { ProjectDiagrams } from "@/components/project-diagrams";
@@ -14,6 +14,7 @@ const CHAPTERS = [
   { id: "rag", label: "RAG" },
   { id: "cloud", label: "Cloud" },
   { id: "invi", label: "INVI" },
+  { id: "cv", label: "CV" },
   { id: "contacto", label: "Contacto" },
 ] as const;
 
@@ -24,6 +25,30 @@ const SOCIAL = [
 ] as const;
 
 function ThemeToggle() {
+  const sunRef = useRef<HTMLSpanElement>(null);
+  const [blinkDone, setBlinkDone] = useState(false);
+
+  useEffect(() => {
+    const dark = localStorage.getItem("et-theme") === "dark" ||
+      (!localStorage.getItem("et-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", dark);
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+
+    if (!dark && sunRef.current) {
+      let count = 0;
+      const interval = setInterval(() => {
+        sunRef.current!.style.opacity = count % 2 === 0 ? "0" : "1";
+        count++;
+        if (count >= 6) {
+          clearInterval(interval);
+          sunRef.current!.style.opacity = "1";
+          setBlinkDone(true);
+        }
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
   const apply = (dark: boolean) => {
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
@@ -41,7 +66,7 @@ function ThemeToggle() {
       onClick={() => apply(!document.documentElement.classList.contains("dark"))}
       className="link-press grid size-11 place-items-center rounded-full border border-line bg-surface text-fg"
     >
-      <Sun className="hidden size-5 dark:block" aria-hidden="true" />
+      <Sun ref={sunRef} className="hidden size-5 dark:block" aria-hidden="true" style={{ transition: "opacity 200ms" }} />
       <Moon className="size-5 dark:hidden" aria-hidden="true" />
     </button>
   );
@@ -146,6 +171,123 @@ function WorkStation({ item }: { item: WorkItem }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+function CVStation() {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [visitorName, setVisitorName] = useState("");
+  const [showForm, setShowForm] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = visitorName.trim() || "unknown";
+    try {
+      localStorage.setItem("et-cv-visitor", name);
+      localStorage.setItem("et-cv-timestamp", Date.now().toString());
+    } catch {
+      /* ignore private mode */
+    }
+    setShowForm(false);
+    setSubmitted(true);
+    setTimeout(() => setViewerOpen(true), 300);
+  };
+
+  const closeViewer = () => setViewerOpen(false);
+
+  const cvUrl = "/portfolio-python-ai-architect/cv-eduardo-tellez-valverde.pdf";
+
+  return (
+    <>
+      <Station id="cv" reveal="static">
+        <div className="panel px-5 py-6 sm:px-7">
+          <p className="text-xs font-medium tracking-widest text-muted uppercase">Currículum Vitae</p>
+          <h2 className="mt-2 font-display text-3xl leading-tight text-balance">Perfil profesional completo</h2>
+
+          {showForm && (
+            <form onSubmit={handleSubmit} className="mt-6 max-w-md">
+              <p className="text-sm text-muted mb-4">
+                Para visualizar el CV, indícanos tu nombre u organización.
+                <br />
+                <span className="text-muted/70">
+                  Si es una visita de curiosidad y prefieres no identificarte, simplemente escribe 
+                  <code className="bg-soft px-1.5 py-0.5 rounded text-accent text-sm font-mono">unknown</code>.
+                </span>
+              </p>
+              <p className="text-xs text-accent/80 mb-4">
+                El CV se muestra incrustado en esta página (sin descarga obligatoria), cumpliendo estándares de seguridad y privacidad. Puedes descargarlo después si lo deseas.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={visitorName}
+                  onChange={(e) => setVisitorName(e.target.value)}
+                  placeholder="Nombre / Organización"
+                  required
+                  minLength={1}
+                  className="flex-1 min-h-11 px-4 py-2 rounded-xl border border-line bg-surface text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  aria-label="Nombre u organización"
+                />
+                <button
+                  type="submit"
+                  className="press inline-flex items-center gap-2 min-h-11 px-5 rounded-xl border border-accent bg-accent text-accent-fg font-medium"
+                >
+                  <Eye className="size-4" aria-hidden="true" />
+                  Visualizar CV
+                </button>
+              </div>
+            </form>
+          )}
+
+          {submitted && !viewerOpen && (
+            <div className="mt-6 flex items-center gap-3 text-sm text-accent">
+              <span className="size-5 animate-spin" aria-hidden="true">⟳</span>
+              <span>Cargando visor...</span>
+            </div>
+          )}
+
+          {viewerOpen && (
+            <div className="mt-6 relative">
+              <div className="sticky top-4 flex items-center justify-between gap-2 mb-4 p-3 rounded-xl border border-line bg-surface/80 backdrop-blur">
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <FileText className="size-4" aria-hidden="true" />
+                  <span>CV Eduardo Téllez Valverde — Junio 2026</span>
+                  {localStorage.getItem("et-cv-visitor") && (
+                    <span className="ml-2 px-2 py-0.5 text-xs bg-soft rounded text-accent">
+                      Visitante: {localStorage.getItem("et-cv-visitor")}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={cvUrl}
+                    download
+                    className="press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line bg-surface text-fg hover:border-accent hover:text-accent text-sm"
+                  >
+                    <Download className="size-3.5" aria-hidden="true" />
+                    Descargar PDF
+                  </a>
+                  <button
+                    onClick={closeViewer}
+                    className="press grid size-9 place-items-center rounded-lg border border-line bg-surface text-fg hover:border-accent hover:text-accent"
+                    aria-label="Cerrar visor"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+              <iframe
+                src={cvUrl}
+                title="CV Eduardo Téllez Valverde"
+                className="w-full min-h-[70vh] rounded-xl border border-line bg-white dark:bg-neutral-900"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </div>
+          )}
+        </div>
+      </Station>
+    </>
   );
 }
 
@@ -304,6 +446,8 @@ export function BioPage() {
             <WorkStation item={item} />
           </Station>
         ))}
+
+        <CVStation />
 
         <Station id="contacto" reveal="static">
           <div className="panel px-5 py-6 sm:px-7">
