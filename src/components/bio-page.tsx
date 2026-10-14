@@ -26,23 +26,25 @@ const SOCIAL = [
 
 function ThemeToggle() {
   const sunRef = useRef<HTMLSpanElement>(null);
-  const [blinkDone, setBlinkDone] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const dark = localStorage.getItem("et-theme") === "dark" ||
-      (!localStorage.getItem("et-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    setMounted(true);
+    const stored = localStorage.getItem("et-theme");
+    const dark = stored === "dark" || (stored === null); // default dark
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
 
     if (!dark && sunRef.current) {
       let count = 0;
       const interval = setInterval(() => {
-        sunRef.current!.style.opacity = count % 2 === 0 ? "0" : "1";
+        if (sunRef.current) {
+          sunRef.current.style.opacity = count % 2 === 0 ? "0" : "1";
+        }
         count++;
         if (count >= 6) {
           clearInterval(interval);
-          sunRef.current!.style.opacity = "1";
-          setBlinkDone(true);
+          if (sunRef.current) sunRef.current.style.opacity = "1";
         }
       }, 500);
       return () => clearInterval(interval);
@@ -58,6 +60,18 @@ function ThemeToggle() {
       /* ignore private mode */
     }
   };
+
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        aria-label="Cambiar tema"
+        className="link-press grid size-11 place-items-center rounded-full border border-line bg-surface text-fg"
+      >
+        <Moon className="size-5" aria-hidden="true" />
+      </button>
+    );
+  }
 
   return (
     <button
@@ -174,11 +188,78 @@ function WorkStation({ item }: { item: WorkItem }) {
   );
 }
 
+function CVViewer({ visitorName, onClose, cvUrl }: { visitorName: string; onClose: () => void; cvUrl: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className="mt-6 relative w-full">
+      <div className="sticky top-4 z-10 flex items-center justify-between gap-2 mb-4 p-3 rounded-xl border border-line bg-surface/90 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted flex-wrap">
+          <FileText className="size-4" aria-hidden="true" />
+          <span className="truncate">CV Eduardo Téllez Valverde — Junio 2026</span>
+          {visitorName && (
+            <span className="ml-2 px-2 py-0.5 text-xs bg-soft rounded text-accent whitespace-nowrap">
+              Visitante: {visitorName}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href={cvUrl}
+            download
+            className="press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line bg-surface text-fg hover:border-accent hover:text-accent text-sm whitespace-nowrap"
+          >
+            <Download className="size-3.5" aria-hidden="true" />
+            Descargar PDF
+          </a>
+          <button
+            onClick={onClose}
+            className="press grid size-9 place-items-center rounded-lg border border-line bg-surface text-fg hover:border-accent hover:text-accent"
+            aria-label="Cerrar visor"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="relative" style={{ minHeight: "70vh" }}>
+        {!loaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-surface/50 rounded-xl border border-line">
+            <div className="text-center p-6">
+              <div className="size-10 border-4 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" aria-label="Cargando PDF" />
+              <p className="text-sm text-muted">Cargando visor...</p>
+            </div>
+          </div>
+        )}
+        <iframe
+          ref={iframeRef}
+          src={cvUrl}
+          title="CV Eduardo Téllez Valverde"
+          className="w-full h-full min-h-[70vh] rounded-xl border border-line bg-white dark:bg-neutral-900"
+          sandbox="allow-scripts allow-same-origin"
+          onLoad={() => setLoaded(true)}
+          style={{ pointerEvents: loaded ? "auto" : "none" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function CVStation() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [visitorName, setVisitorName] = useState("");
   const [showForm, setShowForm] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [storedVisitor, setStoredVisitor] = useState("");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("et-cv-visitor");
+      if (stored) setStoredVisitor(stored);
+    } catch {
+      /* ignore private mode */
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,105 +270,78 @@ function CVStation() {
     } catch {
       /* ignore private mode */
     }
+    setStoredVisitor(name);
     setShowForm(false);
     setSubmitted(true);
-    setTimeout(() => setViewerOpen(true), 300);
+    requestAnimationFrame(() => setViewerOpen(true));
   };
 
-  const closeViewer = () => setViewerOpen(false);
+  const closeViewer = () => {
+    setViewerOpen(false);
+    setShowForm(true);
+    setSubmitted(false);
+  };
 
   const cvUrl = "/portfolio-python-ai-architect/cv-eduardo-tellez-valverde.pdf";
 
   return (
-    <>
-      <Station id="cv" reveal="static">
-        <div className="panel px-5 py-6 sm:px-7">
-          <p className="text-xs font-medium tracking-widest text-muted uppercase">Currículum Vitae</p>
-          <h2 className="mt-2 font-display text-3xl leading-tight text-balance">Perfil profesional completo</h2>
+    <Station id="cv" reveal="static">
+      <div className="panel px-5 py-6 sm:px-7">
+        <p className="text-xs font-medium tracking-widest text-muted uppercase">Currículum Vitae</p>
+        <h2 className="mt-2 font-display text-3xl leading-tight text-balance">Perfil profesional completo</h2>
 
-          {showForm && (
-            <form onSubmit={handleSubmit} className="mt-6 max-w-md">
-              <p className="text-sm text-muted mb-4">
-                Para visualizar el CV, indícanos tu nombre u organización.
-                <br />
-                <span className="text-muted/70">
-                  Si es una visita de curiosidad y prefieres no identificarte, simplemente escribe 
-                  <code className="bg-soft px-1.5 py-0.5 rounded text-accent text-sm font-mono">unknown</code>.
-                </span>
-              </p>
-              <p className="text-xs text-accent/80 mb-4">
-                El CV se muestra incrustado en esta página (sin descarga obligatoria), cumpliendo estándares de seguridad y privacidad. Puedes descargarlo después si lo deseas.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={visitorName}
-                  onChange={(e) => setVisitorName(e.target.value)}
-                  placeholder="Nombre / Organización"
-                  required
-                  minLength={1}
-                  className="flex-1 min-h-11 px-4 py-2 rounded-xl border border-line bg-surface text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  aria-label="Nombre u organización"
-                />
-                <button
-                  type="submit"
-                  className="press inline-flex items-center gap-2 min-h-11 px-5 rounded-xl border border-accent bg-accent text-accent-fg font-medium"
-                >
-                  <Eye className="size-4" aria-hidden="true" />
-                  Visualizar CV
-                </button>
-              </div>
-            </form>
-          )}
-
-          {submitted && !viewerOpen && (
-            <div className="mt-6 flex items-center gap-3 text-sm text-accent">
-              <span className="size-5 animate-spin" aria-hidden="true">⟳</span>
-              <span>Cargando visor...</span>
-            </div>
-          )}
-
-          {viewerOpen && (
-            <div className="mt-6 relative">
-              <div className="sticky top-4 flex items-center justify-between gap-2 mb-4 p-3 rounded-xl border border-line bg-surface/80 backdrop-blur">
-                <div className="flex items-center gap-2 text-sm text-muted">
-                  <FileText className="size-4" aria-hidden="true" />
-                  <span>CV Eduardo Téllez Valverde — Junio 2026</span>
-                  {localStorage.getItem("et-cv-visitor") && (
-                    <span className="ml-2 px-2 py-0.5 text-xs bg-soft rounded text-accent">
-                      Visitante: {localStorage.getItem("et-cv-visitor")}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={cvUrl}
-                    download
-                    className="press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line bg-surface text-fg hover:border-accent hover:text-accent text-sm"
-                  >
-                    <Download className="size-3.5" aria-hidden="true" />
-                    Descargar PDF
-                  </a>
-                  <button
-                    onClick={closeViewer}
-                    className="press grid size-9 place-items-center rounded-lg border border-line bg-surface text-fg hover:border-accent hover:text-accent"
-                    aria-label="Cerrar visor"
-                  >
-                    <X className="size-4" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-              <iframe
-                src={cvUrl}
-                title="CV Eduardo Téllez Valverde"
-                className="w-full min-h-[70vh] rounded-xl border border-line bg-white dark:bg-neutral-900"
-                sandbox="allow-scripts allow-same-origin"
+        {showForm && (
+          <form onSubmit={handleSubmit} className="mt-6 w-full max-w-md sm:max-w-lg">
+            <p className="text-sm text-muted mb-4">
+              Para visualizar el CV, indícanos tu nombre u organización.
+              <br />
+              <span className="text-muted/70">
+                Si es una visita de curiosidad y prefieres no identificarte, simplemente escribe 
+                <code className="bg-soft px-1.5 py-0.5 rounded text-accent text-sm font-mono">unknown</code>.
+              </span>
+            </p>
+            <p className="text-xs text-accent/80 mb-4">
+              El CV se muestra incrustado en esta página (sin descarga obligatoria), cumpliendo estándares de seguridad y privacidad. Puedes descargarlo después si lo deseas.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <input
+                type="text"
+                value={visitorName}
+                onChange={(e) => setVisitorName(e.target.value)}
+                placeholder="Nombre / Organización"
+                required
+                minLength={1}
+                className="flex-1 min-h-11 px-4 py-2 rounded-xl border border-line bg-surface text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 text-base"
+                aria-label="Nombre u organización"
+                autoComplete="organization"
               />
+              <button
+                type="submit"
+                className="press inline-flex items-center gap-2 min-h-11 px-5 rounded-xl border border-accent bg-accent text-accent-fg font-medium whitespace-nowrap"
+              >
+                <Eye className="size-4" aria-hidden="true" />
+                Visualizar CV
+              </button>
             </div>
-          )}
-        </div>
-      </Station>
-    </>
+          </form>
+        )}
+
+        {submitted && !viewerOpen && (
+          <div className="mt-6 flex items-center justify-center gap-3 text-sm text-accent py-8">
+            <div className="size-5 border-4 border-accent/30 border-t-accent rounded-full animate-spin" aria-label="Cargando" />
+            <span>Cargando visor...</span>
+          </div>
+        )}
+
+        {viewerOpen && (
+          <CVViewer
+            visitorName={storedVisitor}
+            onClose={closeViewer}
+            cvUrl={cvUrl}
+          />
+        )}
+      </div>
+    </Station>
   );
 }
 
