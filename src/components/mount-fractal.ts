@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MotionState } from "@/components/motion-state";
+import { isOverlayOpen, subscribeOverlay } from "@/components/overlay-state";
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
@@ -177,7 +178,10 @@ export function mountFractal(canvas: HTMLCanvasElement, motion: MotionState) {
     const t = i / 7;
     const mode = i % 2 === 0 ? "static" : "depth";
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(tetraPoints(mode === "static" ? 900 : 1400, 11 + i * 17), 3));
+    geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(tetraPoints(mode === "static" ? 900 : 1400, 11 + i * 17), 3),
+    );
     geometries.push(geometry);
     const mat = new THREE.PointsMaterial({
       color: readColor(mode === "static" ? "--mist" : "--fractal", "#b08978"),
@@ -233,7 +237,10 @@ export function mountFractal(canvas: HTMLCanvasElement, motion: MotionState) {
     renderer.setClearColor(uniforms.uBg.value, 1);
   };
   const themeObserver = new MutationObserver(syncTheme);
-  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "style"],
+  });
 
   const fit = () => {
     const width = window.innerWidth;
@@ -251,15 +258,25 @@ export function mountFractal(canvas: HTMLCanvasElement, motion: MotionState) {
       dust.mat.size = mobile ? dust.base * 0.09 : dust.mode === "static" ? 0.02 : 0.034;
     });
   };
+  let fitFrame = 0;
+  const scheduleFit = () => {
+    if (fitFrame) return;
+    fitFrame = window.requestAnimationFrame(() => {
+      fitFrame = 0;
+      fit();
+    });
+  };
   fit();
-  window.addEventListener("resize", fit);
+  window.addEventListener("resize", scheduleFit);
 
   let raf = 0;
   let time = 0;
   let last = performance.now();
+  let running = false;
 
-  const frame = (now: number) => {
-    raf = window.requestAnimationFrame(frame);
+  const shouldPause = () => document.hidden || isOverlayOpen();
+
+  const draw = (now: number) => {
     const delta = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (!motion.reduced) time += delta;
@@ -298,11 +315,44 @@ export function mountFractal(canvas: HTMLCanvasElement, motion: MotionState) {
 
     renderer.render(scene, camera);
   };
-  raf = window.requestAnimationFrame(frame);
+
+  const loop = (now: number) => {
+    if (shouldPause()) {
+      running = false;
+      return;
+    }
+    draw(now);
+    raf = window.requestAnimationFrame(loop);
+  };
+
+  const start = () => {
+    if (running) return;
+    running = true;
+    last = performance.now();
+    raf = window.requestAnimationFrame(loop);
+  };
+
+  const stop = () => {
+    running = false;
+    window.cancelAnimationFrame(raf);
+  };
+
+  const sync = () => {
+    if (shouldPause()) stop();
+    else start();
+  };
+
+  document.addEventListener("visibilitychange", sync);
+  const unsubscribeOverlay = subscribeOverlay(sync);
+  sync();
 
   return () => {
+    document.removeEventListener("visibilitychange", sync);
+    unsubscribeOverlay();
+    running = false;
     window.cancelAnimationFrame(raf);
-    window.removeEventListener("resize", fit);
+    if (fitFrame) window.cancelAnimationFrame(fitFrame);
+    window.removeEventListener("resize", scheduleFit);
     themeObserver.disconnect();
     geometries.forEach((geometry) => geometry.dispose());
     materials.forEach((item) => item.dispose());
