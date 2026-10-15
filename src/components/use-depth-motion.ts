@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import type { MotionState } from "@/components/motion-state";
+import { isOverlayOpen } from "@/components/overlay-state";
 
 export function scrollToStation(id: string) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -124,7 +125,8 @@ export function useDepthMotion(
       requestAnimationFrame(() => {
         const active = document.activeElement as HTMLElement | null;
         const tag = active?.tagName;
-        const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active?.isContentEditable;
+        const typing =
+          tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active?.isContentEditable;
         isTyping = Boolean(typing);
       });
     };
@@ -132,8 +134,22 @@ export function useDepthMotion(
     const onKey = (event: KeyboardEvent) => {
       const el = event.target as HTMLElement | null;
       const tag = el?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "A" || tag === "BUTTON" || el?.isContentEditable) return;
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "PageDown" && event.key !== "PageUp") {
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        tag === "A" ||
+        tag === "BUTTON" ||
+        el?.isContentEditable
+      )
+        return;
+      if (isOverlayOpen() || el?.closest('[role="dialog"]')) return;
+      if (
+        event.key !== "ArrowDown" &&
+        event.key !== "ArrowUp" &&
+        event.key !== "PageDown" &&
+        event.key !== "PageUp"
+      ) {
         return;
       }
       event.preventDefault();
