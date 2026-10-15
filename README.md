@@ -8,17 +8,17 @@ El sitio presenta los ejes técnicos y casos de arquitectura en producción medi
 
 ## Proyectos Destacados en el Portafolio
 
-| Sistema | Entorno / Periodo | Arquitectura y Alcance Técnico |
-| :--- | :--- | :--- |
-| **Syntage-Bridge y CFDI** | 789.mx / Fluxo Fintech (2026) | Middleware fiscal en producción con **FastAPI** (resolución de `RFC` a `entity_id`, endpoints REST sobre la API de Syntage) y pipeline determinístico de riesgo crediticio (concentración, aging, cancelaciones y nómina). |
-| **Sistemas RAG** | Independiente (2023–2026) | Búsqueda semántica con **FastAPI + ChromaDB** sobre PDF, APIs, código y Markdown; enrutamiento híbrido entre Claude, Gemini y **Ollama (CUDA local)** con guardrails, hooks de validación y *audit trail*. |
-| **Cloud Híbrido e Inferencia Local** | Azure AI Foundry · AWS · Ollama | Generación automatizada de reportes ejecutivos con LLM + RAG sobre CFDI en **Azure AI Foundry**, almacenamiento en **Azure Blob Storage** y **AWS S3**, e inferencia local con **Ollama + CUDA** para datos sensibles. |
-| **INVI · OCR y Geodatos** | Vivienda CDMX (2021–2023) | Automatización institucional de expedientes físicos mediante **OCR**, pipelines geoespaciales (**KML, GeoJSON, CSV, XLSX**) y conciliación con validación por etapas y *fuzzy matching*. |
+| Sistema                              | Entorno / Periodo               | Arquitectura y Alcance Técnico                                                                                                                                                                                             |
+| :----------------------------------- | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Syntage-Bridge y CFDI**            | 789.mx / Fluxo Fintech (2026)   | Middleware fiscal en producción con **FastAPI** (resolución de `RFC` a `entity_id`, endpoints REST sobre la API de Syntage) y pipeline determinístico de riesgo crediticio (concentración, aging, cancelaciones y nómina). |
+| **Sistemas RAG**                     | Independiente (2023–2026)       | Búsqueda semántica con **FastAPI + ChromaDB** sobre PDF, APIs, código y Markdown; enrutamiento híbrido entre Claude, Gemini y **Ollama (CUDA local)** con guardrails, hooks de validación y _audit trail_.                 |
+| **Cloud Híbrido e Inferencia Local** | Azure AI Foundry · AWS · Ollama | Generación automatizada de reportes ejecutivos con LLM + RAG sobre CFDI en **Azure AI Foundry**, almacenamiento en **Azure Blob Storage** y **AWS S3**, e inferencia local con **Ollama + CUDA** para datos sensibles.     |
+| **INVI · OCR y Geodatos**            | Vivienda CDMX (2021–2023)       | Automatización institucional de expedientes físicos mediante **OCR**, pipelines geoespaciales (**KML, GeoJSON, CSV, XLSX**) y conciliación con validación por etapas y _fuzzy matching_.                                   |
 
 ## Vista de Estaciones Interactivas
 
-| Syntage-Bridge y CFDI | Sistemas RAG |
-| :---: | :---: |
+|                 Syntage-Bridge y CFDI                  |               Sistemas RAG                |
+| :----------------------------------------------------: | :---------------------------------------: |
 | ![Syntage-Bridge y CFDI](docs/screenshots/syntage.png) | ![Sistemas RAG](docs/screenshots/rag.png) |
 
 ## Stack Tecnológico del Sitio
@@ -26,13 +26,23 @@ El sitio presenta los ejes técnicos y casos de arquitectura en producción medi
 - **Framework & Enrutamiento:** [React 19](https://react.dev/) + [TanStack Start / Router](https://tanstack.com/router) con SSR y pre-carga tipada.
 - **Gráficos 3D & Shaders:** [Three.js](https://threejs.org/) con un fragment shader **GLSL** personalizado (interpolación continua sobre el conjunto de Julia, nubes de puntos tetraédricas y anillos orbitales reactivos al scroll y puntero).
 - **Motor de Profundidad & Accesibilidad:** Hook personalizado (`useDepthMotion`) con interpolación `requestAnimationFrame`, navegación por teclado (`ArrowUp`/`ArrowDown`/`PageUp`/`PageDown`), soporte completo para `prefers-reduced-motion` y tema claro/oscuro persistente.
-- **Estilos & Tipografía:** [Tailwind CSS v4](https://tailwindcss.com/) con variables CSS en espacio de color `oklab`, tipografía editorial *Fraunces* y *Outfit*, y diagramas de arquitectura en SVG animado.
+- **Estilos & Tipografía:** [Tailwind CSS v4](https://tailwindcss.com/) con variables CSS en espacio de color `oklab`, tipografía editorial _Fraunces_ y _Outfit_, y diagramas de arquitectura en SVG animado.
 - **Despliegue:** Preconfigurado con [Nitro](https://nitro.build/) para despliegue directo en [Vercel](https://vercel.com/).
+
+## Registro de Visitantes del CV (Cloudflare Worker + D1)
+
+El formulario "Abrir currículum" registra quién solicita ver el CV mediante un
+Cloudflare Worker (`cv-visitors-api`) que persiste en una base D1 (`cv-visitors`).
+El frontend (`src/components/cv-access-dialog.tsx`) hace `POST` a `/api/cv-visitors`.
+
+Arquitectura, esquema, migraciones y despliegue en
+[`docs/cv-visitor-tracking.md`](docs/cv-visitor-tracking.md).
 
 ## Estructura del Proyecto
 
 ```text
 ├── docs/
+│   ├── cv-visitor-tracking.md      # Registro de visitantes del CV (Worker + D1)
 │   └── screenshots/                # Capturas de las estaciones del portafolio
 ├── public/
 │   ├── cv-eduardo-tellez-valverde.pdf
@@ -41,6 +51,7 @@ El sitio presenta los ejes técnicos y casos de arquitectura en producción medi
 ├── src/
 │   ├── components/
 │   │   ├── bio-page.tsx            # Layout principal y estaciones del portafolio
+│   │   ├── cv-access-dialog.tsx    # Modal de acceso y registro del CV
 │   │   ├── fractal-canvas.tsx      # Lienzo WebGL con carga diferida en cliente
 │   │   ├── motion-state.ts         # Estado compartido de scroll y puntero
 │   │   ├── mount-fractal.ts        # Escena Three.js y shaders GLSL (Julia set)
@@ -55,6 +66,10 @@ El sitio presenta los ejes técnicos y casos de arquitectura en producción medi
 │   │   └── index.tsx               # Ruta principal (/)
 │   ├── router.tsx                  # Configuración de TanStack Router
 │   └── styles.css                  # Tokens de diseño, tema claro/oscuro y animaciones
+├── worker/
+│   ├── migrations/                 # Migraciones de D1 (esquema de cv_visitors)
+│   ├── src/index.ts                # Worker cv-visitors-api (POST /api/cv-visitors)
+│   └── wrangler.toml               # Configuración del Worker y binding de D1
 ├── package.json
 ├── tsconfig.json
 ├── vercel.json
