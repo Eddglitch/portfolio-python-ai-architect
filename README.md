@@ -29,20 +29,23 @@ El sitio presenta los ejes técnicos y casos de arquitectura en producción medi
 - **Estilos & Tipografía:** [Tailwind CSS v4](https://tailwindcss.com/) con variables CSS en espacio de color `oklab`, tipografía editorial _Fraunces_ y _Outfit_, y diagramas de arquitectura en SVG animado.
 - **Despliegue:** Preconfigurado con [Nitro](https://nitro.build/) para despliegue directo en [Vercel](https://vercel.com/).
 
-## Registro de Visitantes del CV (Cloudflare Worker + D1)
+## Métricas Anónimas de Visita (Cloudflare Worker + D1)
 
-El formulario "Abrir currículum" registra quién solicita ver el CV mediante un
-Cloudflare Worker (`cv-visitors-api`) que persiste en una base D1 (`cv-visitors`).
-El frontend (`src/components/cv-access-dialog.tsx`) hace `POST` a `/api/cv-visitors`.
+La sección _Transparencia_ cuenta las visitas de forma **anónima y agregada**:
+sin nombre ni correo, solo valores numéricos, con participación voluntaria
+(opt-in/opt-out) y retención de 7 días. Un Cloudflare Worker (`cv-visitors-api`)
+persiste en una base D1 (`cv-visitors`); el frontend (`src/components/metricas.ts`)
+envía la métrica una sola vez por sesión (`sendBeacon`) y cachea con `sessionStorage`.
 
 Arquitectura, esquema, migraciones y despliegue en
-[`docs/cv-visitor-tracking.md`](docs/cv-visitor-tracking.md).
+[`docs/cv-visitor-tracking.md`](docs/cv-visitor-tracking.md). Aviso de privacidad en
+[`PRIVACY.md`](PRIVACY.md).
 
 ## Estructura del Proyecto
 
 ```text
 ├── docs/
-│   ├── cv-visitor-tracking.md      # Registro de visitantes del CV (Worker + D1)
+│   ├── cv-visitor-tracking.md      # Métricas anónimas de visita (Worker + D1)
 │   └── screenshots/                # Capturas de las estaciones del portafolio
 ├── public/
 │   ├── cv-eduardo-tellez-valverde.pdf
@@ -51,7 +54,11 @@ Arquitectura, esquema, migraciones y despliegue en
 ├── src/
 │   ├── components/
 │   │   ├── bio-page.tsx            # Layout principal y estaciones del portafolio
-│   │   ├── cv-access-dialog.tsx    # Modal de acceso y registro del CV
+│   │   ├── cv-access-dialog.tsx    # Modal del CV + opt-in/opt-out de la métrica
+│   │   ├── metricas.ts             # Caché híbrida, eventos de sesión y sendBeacon
+│   │   ├── participacion.ts        # Preferencia de participación (opt-in/opt-out)
+│   │   ├── public-metrics.tsx      # Dashboard público de visitas (últimos 7 días)
+│   │   ├── seudonimo.ts            # Apodo anónimo generado en el navegador
 │   │   ├── fractal-canvas.tsx      # Lienzo WebGL con carga diferida en cliente
 │   │   ├── motion-state.ts         # Estado compartido de scroll y puntero
 │   │   ├── mount-fractal.ts        # Escena Three.js y shaders GLSL (Julia set)
@@ -68,7 +75,7 @@ Arquitectura, esquema, migraciones y despliegue en
 │   └── styles.css                  # Tokens de diseño, tema claro/oscuro y animaciones
 ├── worker/
 │   ├── migrations/                 # Migraciones de D1 (esquema de cv_visitors)
-│   ├── src/index.ts                # Worker cv-visitors-api (POST /api/cv-visitors)
+│   ├── src/index.ts                # Worker cv-visitors-api (POST + GET /stats)
 │   └── wrangler.toml               # Configuración del Worker y binding de D1
 ├── package.json
 ├── tsconfig.json

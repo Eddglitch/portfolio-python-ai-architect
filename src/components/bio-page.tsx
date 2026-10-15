@@ -1,9 +1,32 @@
 import { useRef, useState, useEffect, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpRight, FileDown, Github, Linkedin, Mail, Moon, Sun } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpRight,
+  FileDown,
+  Github,
+  Linkedin,
+  Mail,
+  Moon,
+  Sun,
+} from "lucide-react";
 import { FractalCanvas } from "@/components/fractal-canvas";
 import CVAccessDialog from "@/components/cv-access-dialog";
 import type { MotionState } from "@/components/motion-state";
 import { ProjectDiagrams } from "@/components/project-diagrams";
+import {
+  getParticipation,
+  setParticipation,
+  subscribeParticipation,
+  type Participation,
+} from "@/components/participacion";
+import {
+  iniciarAutoflush,
+  registrarVisita,
+  useEventosSesion,
+  useMetricas,
+} from "@/components/metricas";
+import { PublicMetrics } from "@/components/public-metrics";
 import { scrollToStation, useDepthMotion } from "@/components/use-depth-motion";
 import { beats, profile, work, type WorkItem } from "@/data/profile";
 
@@ -16,6 +39,7 @@ const CHAPTERS = [
   { id: "cloud", label: "Cloud" },
   { id: "invi", label: "INVI" },
   { id: "cv", label: "CV" },
+  { id: "transparencia", label: "Transparencia" },
   { id: "contacto", label: "Contacto" },
 ] as const;
 
@@ -32,7 +56,7 @@ function ThemeToggle() {
   useEffect(() => {
     setMounted(true);
     const stored = localStorage.getItem("et-theme");
-    const dark = stored === "dark" || (stored === null); // default dark
+    const dark = stored === "dark" || stored === null; // default dark
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
 
@@ -81,7 +105,12 @@ function ThemeToggle() {
       onClick={() => apply(!document.documentElement.classList.contains("dark"))}
       className="link-press grid size-11 place-items-center rounded-full border border-line bg-surface text-fg"
     >
-      <Sun ref={sunRef} className="hidden size-5 dark:block" aria-hidden="true" style={{ transition: "opacity 200ms" }} />
+      <Sun
+        ref={sunRef}
+        className="hidden size-5 dark:block"
+        aria-hidden="true"
+        style={{ transition: "opacity 200ms" }}
+      />
       <Moon className="size-5 dark:hidden" aria-hidden="true" />
     </button>
   );
@@ -101,23 +130,17 @@ function ExternalRow({
   subtitle,
   icon,
   primary = false,
-  download = false,
 }: {
   href: string;
   title: string;
   subtitle: string;
   icon: ReactNode;
   primary?: boolean;
-  download?: boolean;
 }) {
   return (
     <a
       href={href}
-      {...(download
-        ? { download: true }
-        : href.startsWith("http")
-          ? { target: "_blank", rel: "noopener noreferrer" }
-          : {})}
+      {...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={
         "link-press group flex min-h-14 items-center gap-3 rounded-2xl border px-3.5 py-3 " +
         (primary
@@ -135,7 +158,9 @@ function ExternalRow({
       </span>
       <span className="min-w-0 flex-1 text-left">
         <span className="block font-medium text-balance">{title}</span>
-        <span className={"block text-sm " + (primary ? "text-accent-fg/80" : "text-muted")}>{subtitle}</span>
+        <span className={"block text-sm " + (primary ? "text-accent-fg/80" : "text-muted")}>
+          {subtitle}
+        </span>
       </span>
       <ArrowUpRight
         className="size-4 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
@@ -198,15 +223,204 @@ function CVStation() {
     <Station id="cv" reveal="static" className="cv-station">
       <div className="cv-station-band">
         <div className="cv-station-content">
-          <p className="text-xs font-medium tracking-widest text-muted uppercase">Currículum Vitae</p>
-          <h2 className="mt-2 font-display text-3xl leading-tight text-balance">Perfil profesional completo</h2>
-          <p className="mt-4 max-w-2xl text-sm text-muted">Abre el CV en una ventana enfocada. El formulario y el visor solo se cargan cuando los necesitas.</p>
-          <button type="button" onClick={() => setDialogOpen(true)} className="press mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl border border-accent bg-accent px-5 font-medium text-accent-fg">
-            <FileDown className="size-4" aria-hidden="true" />Abrir currículum
+          <p className="text-xs font-medium tracking-widest text-muted uppercase">
+            Currículum Vitae
+          </p>
+          <h2 className="mt-2 font-display text-3xl leading-tight text-balance">
+            Perfil profesional completo
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm text-muted">
+            Abre el CV en una ventana enfocada. El formulario y el visor solo se cargan cuando los
+            necesitas.
+          </p>
+          <button
+            type="button"
+            onClick={() => setDialogOpen(true)}
+            className="press mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl border border-accent bg-accent px-5 font-medium text-accent-fg"
+          >
+            <FileDown className="size-4" aria-hidden="true" />
+            Abrir currículum
           </button>
+          <p className="mt-3 text-xs text-muted">
+            Y sin registro: el CV está{" "}
+            <a
+              href={cvUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-line underline-offset-4 hover:text-fg"
+            >
+              libre para ver en otra pestaña
+            </a>{" "}
+            o{" "}
+            <a
+              href={cvUrl}
+              download
+              className="underline decoration-line underline-offset-4 hover:text-fg"
+            >
+              descargar
+            </a>
+            .
+          </p>
         </div>
       </div>
       {dialogOpen && <CVAccessDialog cvUrl={cvUrl} onClose={() => setDialogOpen(false)} />}
+    </Station>
+  );
+}
+
+function useParticipationPreference() {
+  const [choice, setChoice] = useState<Participation | null>(() => getParticipation());
+  useEffect(() => subscribeParticipation(setChoice), []);
+  return choice;
+}
+
+function ParticipationInline() {
+  const choice = useParticipationPreference();
+  return (
+    <p className="mx-auto mt-4 max-w-sm text-xs text-pretty text-muted">
+      {choice === null ? (
+        <>
+          Y si quieres, tu visita{" "}
+          <button
+            type="button"
+            onClick={() => setParticipation("participar")}
+            className="underline decoration-line underline-offset-4 hover:text-fg"
+          >
+            cuenta
+          </button>{" "}
+          o{" "}
+          <button
+            type="button"
+            onClick={() => setParticipation("no-participar")}
+            className="underline decoration-line underline-offset-4 hover:text-fg"
+          >
+            no cuenta
+          </button>{" "}
+          para las métricas.
+        </>
+      ) : (
+        <>
+          Tu visita {choice === "participar" ? "cuenta" : "no cuenta"} para las métricas.
+          <button
+            type="button"
+            onClick={() =>
+              setParticipation(choice === "participar" ? "no-participar" : "participar")
+            }
+            className="ml-1 underline decoration-line underline-offset-4 hover:text-fg"
+          >
+            cambiar
+          </button>
+        </>
+      )}
+    </p>
+  );
+}
+
+function TransparenciaStation() {
+  const choice = useParticipationPreference();
+  const { data, cargando, recargar } = useMetricas();
+  const eventos = useEventosSesion();
+  return (
+    <Station id="transparencia" reveal="static">
+      <div className="panel px-6 py-7 sm:px-8">
+        <p className="text-xs font-medium tracking-widest text-muted uppercase">Transparencia</p>
+        <h2 className="mt-3 font-display text-3xl leading-tight text-balance">
+          Qué pasa con tu visita
+        </h2>
+        <p className="mt-3 text-sm text-pretty text-fg/90">
+          Tu visita no compromete nada: no guardamos tu nombre ni tu correo. La base solo registra
+          conteos numéricos y los borra sola a los 7 días.
+        </p>
+        <div className="mt-5 space-y-4 text-sm text-pretty text-fg/90">
+          <div>
+            <h3 className="font-medium text-fg">Qué datos</h3>
+            <p className="mt-1 text-muted">
+              Ni nombre ni correo. Cada visita que participa se cuenta una sola vez, de forma
+              anónima, como un número. Para que se sienta cercano, en tu navegador le ponemos un
+              apodo juguetón; ese apodo nunca sale de tu equipo.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium text-fg">Dónde y para qué</h3>
+            <p className="mt-1 text-muted">
+              En una base de datos de Cloudflare (D1) que solo guarda valores numéricos —cuándo y
+              cuántas— para contabilizar la visita. No se vende ni se comparte con terceros, y los
+              registros se eliminan a los 7 días.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium text-fg">Cómo está construido</h3>
+            <p className="mt-1 text-muted">
+              La métrica viaja una sola vez, cuando cierras o mandas la pestaña al fondo (patrón
+              sendBeacon), y se guarda en tu sesión para no golpear la base en cada clic. Sitio
+              estático con React, Vite y Three.js; el conteo vive en un Worker de Cloudflare con D1.
+              El código es abierto.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-soft px-4 py-3.5 text-xs text-muted">
+          <span>Participación en métricas</span>
+          <span className="flex items-center gap-2">
+            {choice === null
+              ? "Sin definir"
+              : choice === "participar"
+                ? "Participas"
+                : "No participas"}
+            <button
+              type="button"
+              onClick={() =>
+                setParticipation(choice === "participar" ? "no-participar" : "participar")
+              }
+              className="press rounded-lg border border-line bg-surface px-2.5 py-1 text-fg"
+            >
+              {choice === "participar" ? "No participar" : "Participar"}
+            </button>
+          </span>
+        </div>
+        <PublicMetrics data={data} cargando={cargando} onRecargar={recargar} />
+        {eventos > 0 && (
+          <p className="mt-2 text-xs text-muted">
+            Tu visita lleva <span className="font-medium text-fg">{eventos}</span>{" "}
+            {eventos === 1 ? "señal" : "señales"} guardadas en esta sesión; se envían de forma
+            anónima al cerrar o dejar la pestaña.
+          </p>
+        )}
+        <details className="mt-4 text-xs text-muted">
+          <summary className="cursor-pointer underline decoration-line underline-offset-4 hover:text-fg">
+            Aviso de privacidad (resumen)
+          </summary>
+          <div className="mt-3 space-y-2 text-pretty">
+            <p>Responsable: Eduardo Téllez Valverde ({profile.email}).</p>
+            <p>Finalidad: contabilizar visitas al portafolio de forma anónima y agregada.</p>
+            <p>
+              Datos: solo valores numéricos (marca de tiempo y conteo). Sin nombre, correo ni datos
+              sensibles.
+            </p>
+            <p>Conservación: 7 días; después se eliminan automáticamente.</p>
+            <p>Transferencias: ninguna a terceros. El almacenamiento es de Cloudflare (D1).</p>
+            <p>
+              Derechos (acceso, rectificación, cancelación y oposición): escríbeme a{" "}
+              <a
+                className="underline decoration-line underline-offset-4 hover:text-fg"
+                href={`mailto:${profile.email}`}
+              >
+                {profile.email}
+              </a>
+              .
+            </p>
+          </div>
+        </details>
+        <p className="mt-4 text-xs text-muted">
+          Dudas o derechos sobre tus datos:{" "}
+          <a
+            className="underline decoration-line underline-offset-4 hover:text-fg"
+            href={`mailto:${profile.email}`}
+          >
+            {profile.email}
+          </a>
+          .
+        </p>
+      </div>
     </Station>
   );
 }
@@ -227,6 +441,11 @@ export function BioPage() {
     barRef,
   );
 
+  useEffect(() => {
+    registrarVisita();
+    return iniciarAutoflush();
+  }, []);
+
   const atEnd = index >= CHAPTERS.length - 1;
   const chapter = CHAPTERS[index] ?? CHAPTERS[0];
 
@@ -237,7 +456,11 @@ export function BioPage() {
       <ProjectDiagrams activeId={chapter.id} />
 
       <div className="fixed inset-x-0 top-0 z-40 h-0.5">
-        <div ref={barRef} className="h-full w-full origin-left bg-accent" style={{ transform: "scaleX(0)" }} />
+        <div
+          ref={barRef}
+          className="h-full w-full origin-left bg-accent"
+          style={{ transform: "scaleX(0)" }}
+        />
       </div>
 
       <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between gap-3 px-4 pt-4">
@@ -255,13 +478,20 @@ export function BioPage() {
             className="press inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-sm font-medium text-fg"
           >
             {atEnd ? "Inicio" : "Avance"}
-            {atEnd ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
+            {atEnd ? (
+              <ArrowUp className="size-4" aria-hidden="true" />
+            ) : (
+              <ArrowDown className="size-4" aria-hidden="true" />
+            )}
           </button>
           <ThemeToggle />
         </div>
       </header>
 
-      <nav aria-label="Estaciones" className="fixed top-1/2 left-5 z-30 hidden -translate-y-1/2 lg:block">
+      <nav
+        aria-label="Estaciones"
+        className="fixed top-1/2 left-5 z-30 hidden -translate-y-1/2 lg:block"
+      >
         <ol className="flex flex-col">
           {CHAPTERS.map((item, itemIndex) => {
             const current = itemIndex === index;
@@ -273,8 +503,16 @@ export function BioPage() {
                   onClick={() => scrollToStation(item.id)}
                   className="press flex min-h-11 items-center gap-3 text-left"
                 >
-                  <span className={"size-1.5 rounded-full " + (current ? "bg-accent" : "bg-line")} aria-hidden="true" />
-                  <span className={"text-xs font-medium tracking-widest uppercase " + (current ? "text-fg" : "text-muted")}>
+                  <span
+                    className={"size-1.5 rounded-full " + (current ? "bg-accent" : "bg-line")}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={
+                      "text-xs font-medium tracking-widest uppercase " +
+                      (current ? "text-fg" : "text-muted")
+                    }
+                  >
                     {item.label}
                   </span>
                 </button>
@@ -295,18 +533,24 @@ export function BioPage() {
               {profile.given}
               <span className="mt-1 block">{profile.family}</span>
             </h1>
-            <p className="mt-4 text-sm font-medium tracking-wide text-accent uppercase">{profile.role}</p>
+            <p className="mt-4 text-sm font-medium tracking-wide text-accent uppercase">
+              {profile.role}
+            </p>
             <p className="mt-1 text-sm text-muted">{profile.line}</p>
             <p className="mx-auto mt-5 max-w-sm text-sm text-pretty text-muted">
-              El fondo acompaña, no compite. Algunas estaciones se quedan quietas; los proyectos entran y salen en profundidad, con su diagrama fijo al margen.
+              El fondo acompaña, no compite. Algunas estaciones se quedan quietas; los proyectos
+              entran y salen en profundidad, con su diagrama fijo al margen.
             </p>
+            <ParticipationInline />
           </div>
         </Station>
 
         <Station id="perfil" reveal="static">
           <div className="panel px-6 py-7 text-center sm:px-8">
             <p className="text-xs font-medium tracking-widest text-muted uppercase">Perfil</p>
-            <h2 className="mt-3 font-display text-3xl leading-tight text-balance">Sistemas que se pueden auditar</h2>
+            <h2 className="mt-3 font-display text-3xl leading-tight text-balance">
+              Sistemas que se pueden auditar
+            </h2>
             <p className="mt-4 text-pretty text-fg/90">{profile.bio}</p>
             <p className="mt-4 text-sm text-muted">{profile.location}</p>
             <div className="mt-5 flex justify-center gap-2">
@@ -369,10 +613,14 @@ export function BioPage() {
 
         <CVStation />
 
+        <TransparenciaStation />
+
         <Station id="contacto" reveal="static">
           <div className="panel px-5 py-6 sm:px-7">
             <p className="text-xs font-medium tracking-widest text-muted uppercase">Contacto</p>
-            <h2 className="mt-2 font-display text-3xl leading-tight text-balance">Seguimos en la misma señal</h2>
+            <h2 className="mt-2 font-display text-3xl leading-tight text-balance">
+              Seguimos en la misma señal
+            </h2>
             <div className="mt-5 flex flex-col gap-2.5">
               <ExternalRow
                 primary
@@ -382,19 +630,29 @@ export function BioPage() {
                 icon={<WhatsAppIcon />}
               />
               <ExternalRow
-                download
-                href={profile.cv}
-                title="Currículum · junio 2026"
-                subtitle="PDF de una página"
-                icon={<FileDown className="size-5" aria-hidden="true" />}
+                href={`mailto:${profile.email}`}
+                title={profile.email}
+                subtitle="Correo"
+                icon={<Mail className="size-5" aria-hidden="true" />}
               />
-              <ExternalRow href={`mailto:${profile.email}`} title={profile.email} subtitle="Correo" icon={<Mail className="size-5" aria-hidden="true" />} />
             </div>
             <footer className="mt-6 space-y-1.5 text-center text-sm text-muted">
               <p>
-                <a className="underline decoration-line underline-offset-4 hover:text-fg" href={`tel:+52${profile.phoneDisplay.replace(/\s/g, "")}`}>
+                <a
+                  className="underline decoration-line underline-offset-4 hover:text-fg"
+                  href={`tel:+52${profile.phoneDisplay.replace(/\s/g, "")}`}
+                >
                   {profile.phoneDisplay}
                 </a>
+              </p>
+              <p>
+                <button
+                  type="button"
+                  onClick={() => scrollToStation("transparencia")}
+                  className="underline decoration-line underline-offset-4 hover:text-fg"
+                >
+                  Transparencia y datos
+                </button>
               </p>
               <p>Ingeniería en Informática · UPIICSA · IPN</p>
               <p>Scrum Fundamentals Certified · 2024</p>

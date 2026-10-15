@@ -1,17 +1,25 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { Download, FileText, X } from "lucide-react";
+import { Download, Eye, FileText, X } from "lucide-react";
+import { registrarEvento } from "@/components/metricas";
 import { setOverlayOpen } from "@/components/overlay-state";
+import {
+  getParticipation,
+  setParticipation,
+  subscribeParticipation,
+} from "@/components/participacion";
+import { seedDeSesion, seudonimo } from "@/components/seudonimo";
+import { scrollToStation } from "@/components/use-depth-motion";
 
 export default function CVAccessDialog({ cvUrl, onClose }: { cvUrl: string; onClose: () => void }) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [visitorName, setVisitorName] = useState("");
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [registrationMessage, setRegistrationMessage] = useState("");
+  const [alias] = useState(() => seudonimo(seedDeSesion()));
+  const [participation, setLocalParticipation] = useState(() => getParticipation());
   const [viewerOpen, setViewerOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => subscribeParticipation(setLocalParticipation), []);
 
   useEffect(() => {
     const previousFocus =
@@ -39,35 +47,14 @@ export default function CVAccessDialog({ cvUrl, onClose }: { cvUrl: string; onCl
     if (viewerOpen) closeRef.current?.focus();
   }, [viewerOpen]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (submitting) return;
-    const name = visitorName.trim();
-    if (!name) return;
-    setSubmitting(true);
-    setRegistrationMessage("");
-    try {
-      const apiUrl = (
-        import.meta.env.VITE_CV_VISITORS_API_URL ||
-        "https://cv-visitors-api.cv-visitor-worker.workers.dev"
-      ).replace(/\/$/, "");
-      const response = await fetch(apiUrl + "/api/cv-visitors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!response.ok) throw new Error("registration failed");
-      setRegistrationMessage("Solicitud registrada.");
-    } catch {
-      setRegistrationMessage("No se pudo registrar en línea; puedes continuar al CV.");
-    }
-    try {
-      localStorage.setItem("et-cv-visitor", name);
-      localStorage.setItem("et-cv-timestamp", Date.now().toString());
-    } catch {
-      /* El visor sigue disponible sin almacenamiento local. */
-    }
-    setSubmitting(false);
+  const abrirCuenta = () => {
+    setParticipation("participar");
+    registrarEvento(1);
+    setViewerOpen(true);
+  };
+
+  const abrirSinCuenta = () => {
+    setParticipation("no-participar");
     setViewerOpen(true);
   };
 
@@ -145,58 +132,46 @@ export default function CVAccessDialog({ cvUrl, onClose }: { cvUrl: string; onCl
             </button>
           </header>
           {!viewerOpen ? (
-            <form onSubmit={handleSubmit} className="mt-6">
+            <div className="mt-6">
               <p className="text-sm text-muted">
-                Para visualizar el CV, indícanos tu nombre u organización. Si prefieres no
-                identificarte, puedes escribir "unknown".
+                El CV es libre: puedes verlo o descargarlo sin dar tu nombre. Si además sumas tu
+                visita a la métrica pública, esta cuenta como{" "}
+                <span className="font-medium text-fg">“{alias}”</span> — un número anónimo, sin
+                datos personales.
               </p>
-              <p className="mt-3 text-xs text-muted">
-                El nombre y la fecha se enviarán a Cloudflare para contabilizar esta solicitud. No
-                incluyas información sensible.
-              </p>
-              <label className="mt-4 flex items-start gap-2 text-xs text-muted">
-                <input
-                  type="checkbox"
-                  required
-                  checked={privacyAccepted}
-                  onChange={(event) => setPrivacyAccepted(event.target.checked)}
-                  className="mt-0.5 accent-[var(--accent)]"
-                />
-                <span>
-                  Autorizo el registro de este nombre para contabilizar la solicitud de
-                  visualización del CV.
-                </span>
-              </label>
-              <label className="mt-4 block text-sm font-medium text-fg" htmlFor="cv-visitor-name">
-                Nombre / Organización
-              </label>
-              <input
-                id="cv-visitor-name"
-                type="text"
-                value={visitorName}
-                onChange={(event) => setVisitorName(event.target.value)}
-                placeholder="Nombre / Organización"
-                required
-                minLength={1}
-                maxLength={120}
-                className="cv-field mt-2 min-h-12 w-full rounded-xl border border-line bg-surface px-4 py-2 text-base text-fg placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-                autoComplete="organization"
-                enterKeyHint="done"
-              />
               <button
-                type="submit"
-                disabled={submitting}
-                className="press mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-accent bg-accent px-5 font-medium text-accent-fg disabled:opacity-60"
+                type="button"
+                onClick={abrirCuenta}
+                className="press mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-accent bg-accent px-5 font-medium text-accent-fg"
               >
-                <FileText className="size-4" aria-hidden="true" />
-                {submitting ? "Registrando..." : "Registrar y visualizar CV"}
+                <Eye className="size-4" aria-hidden="true" />
+                Ver el CV y que cuente
               </button>
-              {registrationMessage && (
-                <p role="status" className="mt-3 text-xs text-muted">
-                  {registrationMessage}
-                </p>
-              )}
-            </form>
+              <button
+                type="button"
+                onClick={abrirSinCuenta}
+                className="press mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-line bg-surface px-5 text-sm font-medium text-fg"
+              >
+                Ver el CV sin contar
+              </button>
+              <p className="mt-3 text-center text-xs text-muted">
+                {participation === null
+                  ? "Aún no eliges si tu visita cuenta."
+                  : participation === "participar"
+                    ? "Ahora mismo tu visita sí cuenta."
+                    : "Ahora mismo tu visita no cuenta."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  window.requestAnimationFrame(() => scrollToStation("transparencia"));
+                }}
+                className="mt-2 block w-full text-center text-xs text-muted underline decoration-line underline-offset-4 hover:text-fg"
+              >
+                Cómo usamos tus datos
+              </button>
+            </div>
           ) : (
             <section className="mt-5" aria-label="Visor del currículum">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
